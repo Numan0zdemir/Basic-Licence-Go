@@ -34,11 +34,11 @@ var db *sql.DB // veritabanı bağlantısı
 
 func init() {
 	var (
-		username = "admin"
-		password = "415263aA"
-		host     = "192.168.0.207"
+		username = "root"
+		password = "DB_PASS"
+		host     = "127.0.0.1"
 		port     = 3306
-		database = "license"
+		database = "licence_server"
 	)
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", username, password, host, port, database)

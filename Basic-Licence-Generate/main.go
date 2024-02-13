@@ -28,11 +28,11 @@ var license LicenseData
 
 func main() {
 	var (
-		username   = "admin"
-		password   = "415263aA"
-		host       = "192.168.0.207"
+		username   = "root"
+		password   = "DB_PASS"
+		host       = "127.0.0.1"
 		port       = 3306
-		database   = "license"
+		database   = "licence_server"
 		org_name   string
 		org_email  string
 		org_exp    string
