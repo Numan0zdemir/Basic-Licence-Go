@@ -29,7 +29,7 @@ var license LicenseData
 func main() {
 	var (
 		username   = "root"
-		password   = "DB_PASS"
+		password   = "415263aA"
 		host       = "127.0.0.1"
 		port       = 3306
 		database   = "licence_server"
