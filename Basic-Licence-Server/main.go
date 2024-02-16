@@ -138,7 +138,7 @@ func verifyLicense(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Lisans geçerli")
 
 	// SQL sorgusu
-	updateQuery := "UPDATE key_info SET mac_adress = ? WHERE id = ?"
+	updateQuery := "UPDATE key_info SET mac_address = ? WHERE id = ?"
 
 	// SQL sorgusunu çalıştırma
 	_, err = db.Exec(updateQuery, requestLicense.MacAdress, id)
