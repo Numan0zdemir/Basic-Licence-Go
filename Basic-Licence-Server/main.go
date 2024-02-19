@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -18,6 +21,18 @@ type LicenseData struct {
 	LicenseKey string    `json:"license_key"`
 	Expiration time.Time `json:"expiration"`
 	MacAdress  string    `json:"mac_adress"`
+}
+
+type key_info struct {
+	gorm.Model
+	id         uint
+	OrgName    sql.NullString `json:"org_name,omitempty"`
+	OrgEmail   sql.NullString `json:"org_email,omitempty"`
+	Expiration sql.NullString `json:"expiration,omitempty"`
+	EncKey     sql.NullString `json:"enc_key,omitempty"`
+	LicenseKey sql.NullString `json:"license_key,omitempty"`
+	IsDemo     sql.NullBool   `json:"is_demo,omitempty"`
+	MacAddress sql.NullString `json:"mac_address,omitempty"`
 }
 
 type KeyInfo struct {
@@ -33,7 +48,7 @@ type KeyInfo struct {
 var db *sql.DB // veritabanı bağlantısı
 
 func init() {
-	var (
+	/* var (
 		username = "root"
 		password = "415263aA"
 		host     = "127.0.0.1"
@@ -47,7 +62,14 @@ func init() {
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Println("Success!")
+	fmt.Println("Success!") */
+	db, err := gorm.Open(sqlite.Open("licence.db"), &gorm.Config{})
+	if err != nil {
+		panic("failed to connect database")
+	}
+
+	db.AutoMigrate(&key_info{})
+
 }
 
 func main() {
