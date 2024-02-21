@@ -63,7 +63,7 @@ func init() {
 		panic(err.Error())
 	}
 	fmt.Println("Success!") */
-	db, err := gorm.Open(sqlite.Open("licence.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("../db/licence.db"), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
