@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -23,19 +24,19 @@ type LicenseData struct {
 	MacAdress  string    `json:"mac_adress"`
 }
 
-type key_info struct {
-	gorm.Model
-	id         uint
-	OrgName    sql.NullString `json:"org_name,omitempty"`
-	OrgEmail   sql.NullString `json:"org_email,omitempty"`
-	Expiration sql.NullString `json:"expiration,omitempty"`
-	EncKey     sql.NullString `json:"enc_key,omitempty"`
-	LicenseKey sql.NullString `json:"license_key,omitempty"`
-	IsDemo     sql.NullBool   `json:"is_demo,omitempty"`
-	MacAddress sql.NullString `json:"mac_address,omitempty"`
-}
-
 type KeyInfo struct {
+	gorm.Model
+	ID         uint
+	OrgName    sql.NullString `json:"org_name,omitempty"`
+	OrgEmail   sql.NullString `json:"org_email,omitempty"`
+	Expiration sql.NullTime   `json:"expiration,omitempty"`
+	EncKey     sql.NullString `json:"enc_key,omitempty"`
+	LicenseKey sql.NullString `json:"license_key,omitempty"`
+	IsDemo     sql.NullBool   `json:"is_demo,omitempty"`
+	MacAddress sql.NullString `json:"mac_address,omitempty"`
+}
+
+/* type KeyInfo struct {
 	OrgName    sql.NullString `json:"org_name,omitempty"`
 	OrgEmail   sql.NullString `json:"org_email,omitempty"`
 	Expiration sql.NullString `json:"expiration,omitempty"`
@@ -43,9 +44,9 @@ type KeyInfo struct {
 	LicenseKey sql.NullString `json:"license_key,omitempty"`
 	IsDemo     sql.NullBool   `json:"is_demo,omitempty"`
 	MacAddress sql.NullString `json:"mac_address,omitempty"`
-}
+} */
 
-var db *sql.DB // veritabanı bağlantısı
+var db *gorm.DB // veritabanı bağlantısı
 
 func init() {
 	/* var (
@@ -68,13 +69,11 @@ func init() {
 		panic("failed to connect database")
 	}
 
-	db.AutoMigrate(&key_info{})
+	db.AutoMigrate(&KeyInfo{})
 
 }
 
 func main() {
-
-	defer db.Close()
 
 	http.HandleFunc("/auth", authLicense)
 	http.HandleFunc("/verify", verifyLicense)
@@ -98,28 +97,33 @@ func authLicense(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Veritabanında kullanıcı adı ve şifreyi sorgulayın
-	var id int
-	var enc_key, license_key string
-	query := "SELECT id, enc_key, license_key FROM key_info WHERE org_name = ? AND org_email = ?"
-	row := db.QueryRow(query, requestData["org_name"], requestData["org_email"])
-	err = row.Scan(&id, &enc_key, &license_key)
-	if err == sql.ErrNoRows {
+
+	var keyInfo KeyInfo
+	query := db.Where("org_name = ? AND org_email = ?", requestData["org_name"], requestData["org_email"]).First(&keyInfo)
+
+	if errors.Is(query.Error, gorm.ErrRecordNotFound) {
 		http.Error(w, "Kullanıcı adı veya şifre yanlış", http.StatusUnauthorized)
 		return
-	} else if err != nil {
+	} else if query.Error != nil {
 		http.Error(w, "Veritabanı sorgusu hatası", http.StatusInternalServerError)
 		return
 	}
 
-	encryptedLicense := EncryptAES([]byte(enc_key), license_key)
+	// keyInfo.ID, keyInfo.EncKey, keyInfo.LicenseKey değişkenlerini kullanabilirsiniz
+
+	encryptedLicense := EncryptAES([]byte(keyInfo.EncKey.String), keyInfo.LicenseKey.String)
 	licenseData := map[string]string{"license_key": encryptedLicense}
-	responseData, _ := json.Marshal(licenseData)
+	responseData, err := json.Marshal(licenseData)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(responseData)
 }
 
 func verifyLicense(w http.ResponseWriter, r *http.Request) {
-	// POST isteğinden Gelen  lisans verilerini kontrolü
+	// POST isteğinden Gelen lisans verilerini kontrolü
 	var requestLicense LicenseData
 	err := json.NewDecoder(r.Body).Decode(&requestLicense)
 	if err != nil {
@@ -129,28 +133,24 @@ func verifyLicense(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Gelen Lisans Verileri: %+v\n", requestLicense)
 
-	var id int
-	var expiration string
-
-	query := "SELECT id, expiration FROM key_info WHERE license_key = ?"
-	row := db.QueryRow(query, requestLicense.LicenseKey)
-	err = row.Scan(&id, &expiration)
-	if err == sql.ErrNoRows {
-		http.Error(w, "Kullanıcı adı veya şifre yanlış", http.StatusUnauthorized)
+	// Veritabanında lisansı kontrol et
+	var keyInfo KeyInfo
+	result := db.Where("license_key = ?", requestLicense.LicenseKey).First(&keyInfo)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		http.Error(w, "Lisans geçersiz", http.StatusUnauthorized)
 		return
-	} else if err != nil {
+	} else if result.Error != nil {
 		http.Error(w, "Veritabanı sorgusu hatası", http.StatusInternalServerError)
 		return
 	}
 
-	// Veritabanından gelen expiration değerini time.Time'a dönüştürün
-	expirationTime, err := time.Parse("2006-01-02 15:04:05", expiration)
+	// Lisansın son kullanma tarihini kontrol et
+	expirationTime, err := time.Parse("2006-01-02 15:04:05", keyInfo.Expiration.Time.String())
 	if err != nil {
 		http.Error(w, "Geçersiz son kullanma tarihi formatı", http.StatusInternalServerError)
 		return
 	}
 
-	// Anlık tarih karşılaştırması
 	currentTime := time.Now()
 	if currentTime.After(expirationTime) {
 		http.Error(w, "Lisans geçerli değil", http.StatusUnauthorized)
@@ -159,12 +159,10 @@ func verifyLicense(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintln(w, "Lisans geçerli")
 
-	// SQL sorgusu
-	updateQuery := "UPDATE key_info SET mac_address = ? WHERE id = ?"
-
-	// SQL sorgusunu çalıştırma
-	_, err = db.Exec(updateQuery, requestLicense.MacAdress, id)
-	if err != nil {
+	// MAC adresini güncelle
+	result = db.Model(&keyInfo).Update("MacAddress", requestLicense.MacAdress)
+	if result.Error != nil {
+		http.Error(w, "MAC adresi güncelleme hatası", http.StatusInternalServerError)
 		return
 	}
 }
@@ -187,29 +185,19 @@ func EncryptAES(encryptionKey []byte, licenseKey string) string {
 
 func GetKeyInfo(w http.ResponseWriter, r *http.Request) {
 	// Tüm kayıtları veritabanından çekme
-	rows, err := db.Query("SELECT org_name, org_email, expiration, enc_key, license_key, is_demo, mac_address FROM key_info")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	var keyInfos []KeyInfo
+	result := db.Find(&keyInfos)
+	if result.Error != nil {
+		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
 
-	keyInfos := []KeyInfo{}
-	for rows.Next() {
-		var keyInfo KeyInfo
-		err := rows.Scan(&keyInfo.OrgName, &keyInfo.OrgEmail, &keyInfo.Expiration, &keyInfo.EncKey, &keyInfo.LicenseKey, &keyInfo.IsDemo, &keyInfo.MacAddress)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// \r ve \n ifadelerini temizle
-		keyInfo.OrgName.String = strings.ReplaceAll(keyInfo.OrgName.String, "\r", "")
-		keyInfo.OrgName.String = strings.ReplaceAll(keyInfo.OrgName.String, "\n", "")
-		keyInfo.OrgEmail.String = strings.ReplaceAll(keyInfo.OrgEmail.String, "\r", "")
-		keyInfo.OrgEmail.String = strings.ReplaceAll(keyInfo.OrgEmail.String, "\n", "")
-
-		keyInfos = append(keyInfos, keyInfo)
+	// \r ve \n ifadelerini temizle
+	for i := range keyInfos {
+		keyInfos[i].OrgName.String = strings.ReplaceAll(keyInfos[i].OrgName.String, "\r", "")
+		keyInfos[i].OrgName.String = strings.ReplaceAll(keyInfos[i].OrgName.String, "\n", "")
+		keyInfos[i].OrgEmail.String = strings.ReplaceAll(keyInfos[i].OrgEmail.String, "\r", "")
+		keyInfos[i].OrgEmail.String = strings.ReplaceAll(keyInfos[i].OrgEmail.String, "\n", "")
 	}
 
 	w.Header().Set("Content-Type", "application/json")

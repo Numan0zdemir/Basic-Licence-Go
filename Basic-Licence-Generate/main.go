@@ -14,7 +14,8 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 // Lisans verileri için bir yapı (struct)
@@ -23,30 +24,34 @@ type LicenseData struct {
 	Expiration time.Time `json:"expiration"`
 }
 
+type KeyInfo struct {
+	gorm.Model
+	ID         uint
+	OrgName    sql.NullString `json:"org_name,omitempty"`
+	OrgEmail   sql.NullString `json:"org_email,omitempty"`
+	Expiration sql.NullTime   `json:"expiration,omitempty"`
+	EncKey     sql.NullString `json:"enc_key,omitempty"`
+	LicenseKey sql.NullString `json:"license_key,omitempty"`
+	IsDemo     sql.NullBool   `json:"is_demo,omitempty"`
+	MacAddress sql.NullString `json:"mac_address,omitempty"`
+}
+
 var validLicenses = make(map[string]LicenseData)
 var license LicenseData
 
 func main() {
 	var (
-		username   = "root"
-		password   = "415263aA"
-		host       = "127.0.0.1"
-		port       = 3306
-		database   = "licence_server"
 		org_name   string
 		org_email  string
 		org_exp    string
 		is_demo    string
-		is_demo_db string
+		is_demo_db bool
 	)
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", username, password, host, port, database)
-	db, err := sql.Open("mysql", dsn)
+	db, err := gorm.Open(sqlite.Open("../db/licence.db"), &gorm.Config{})
 	if err != nil {
-		panic(err.Error())
+		panic("failed to connect database")
 	}
-	defer db.Close()
-	fmt.Println("Success!")
 
 	// Kullanıcıdan Girdi Alma
 	reader := bufio.NewReader(os.Stdin)
@@ -71,14 +76,14 @@ func main() {
 	is_demo = strings.TrimSpace(strings.ToLower(is_demo))
 
 	if is_demo == "y" {
-		is_demo_db = "true"
+		is_demo_db = true
 		license = LicenseData{
 			LicenseKey: generateLicenseKey(),
 			Expiration: time.Now().Add(30 * 24 * time.Hour), // 30 günlük demo lisans
 		}
 		validLicenses[license.LicenseKey] = license
 	} else {
-		is_demo_db = "false"
+		is_demo_db = false
 		expirationTime, err := time.Parse("2006-01-02", strings.TrimSpace(org_exp))
 		if err != nil {
 			fmt.Println("Geçersiz tarih formatı. Doğru format: YYYY-MM-DD")
@@ -112,7 +117,7 @@ func main() {
 
 	fmt.Printf("Şifrelenmiş Anahtar : %+v\n", encryptedLicense)
 
-	//Veriyi eklemek için INSERT sorgusu
+	/* //Veriyi eklemek için INSERT sorgusu
 	insertQuery := "INSERT INTO key_info (org_name, org_email, expiration, enc_key, license_key, is_demo) VALUES (?, ?, ?, ?, ?, ?)"
 	result, err := db.Exec(insertQuery, org_name, org_email, license.Expiration, encryptionKey, license.LicenseKey, is_demo_db)
 	if err != nil {
@@ -121,6 +126,25 @@ func main() {
 	}
 
 	lastID, _ := result.LastInsertId()
+	fmt.Println("Eklenen verinin ID'si:", lastID) */
+
+	// Veriyi eklemek için INSERT işlemi
+	newKeyInfo := KeyInfo{
+		OrgName:    sql.NullString{String: org_name, Valid: true},
+		OrgEmail:   sql.NullString{String: org_email, Valid: true},
+		Expiration: sql.NullTime{Time: license.Expiration, Valid: true},
+		EncKey:     sql.NullString{String: encryptionKey, Valid: true},
+		LicenseKey: sql.NullString{String: license.LicenseKey, Valid: true},
+		IsDemo:     sql.NullBool{Bool: is_demo_db, Valid: true},
+	}
+
+	result := db.Create(&newKeyInfo)
+	if result.Error != nil {
+		fmt.Println("Veri eklenemedi:", result.Error)
+		return
+	}
+
+	lastID := newKeyInfo.ID
 	fmt.Println("Eklenen verinin ID'si:", lastID)
 
 	// JSON verisini oluşturun.
