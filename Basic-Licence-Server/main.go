@@ -64,7 +64,8 @@ func init() {
 		panic(err.Error())
 	}
 	fmt.Println("Success!") */
-	db, err := gorm.Open(sqlite.Open("../db/licence.db"), &gorm.Config{})
+	var err error
+	db, err = gorm.Open(sqlite.Open("../db/licence.db"), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
@@ -96,10 +97,13 @@ func authLicense(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("%s: %s\n", key, value)
 	}
 
+	orgName := requestData["org_name"]
+	orgEmail := requestData["org_email"]
+
 	// Veritabanında kullanıcı adı ve şifreyi sorgulayın
 
 	var keyInfo KeyInfo
-	query := db.Where("org_name = ? AND org_email = ?", requestData["org_name"], requestData["org_email"]).First(&keyInfo)
+	query := db.Where("org_name = ? AND org_email = ?", orgName, orgEmail).First(&keyInfo)
 
 	if errors.Is(query.Error, gorm.ErrRecordNotFound) {
 		http.Error(w, "Kullanıcı adı veya şifre yanlış", http.StatusUnauthorized)
@@ -145,15 +149,18 @@ func verifyLicense(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Lisansın son kullanma tarihini kontrol et
-	expirationTime, err := time.Parse("2006-01-02 15:04:05", keyInfo.Expiration.Time.String())
+	//expirationTime, err := time.Parse("2006-01-02 15:04:05", keyInfo.Expiration.Time.String())
+	expirationTime := keyInfo.Expiration.Time
+	fmt.Printf("Geçerlilik Tarihi: %s\n", expirationTime.Format("2006-01-02 15:04:05"))
 	if err != nil {
+		fmt.Printf("Test2\n")
 		http.Error(w, "Geçersiz son kullanma tarihi formatı", http.StatusInternalServerError)
 		return
 	}
 
 	currentTime := time.Now()
 	if currentTime.After(expirationTime) {
-		http.Error(w, "Lisans geçerli değil", http.StatusUnauthorized)
+		http.Error(w, "Lisans Süresi Dolmuş", http.StatusUnauthorized)
 		return
 	}
 
