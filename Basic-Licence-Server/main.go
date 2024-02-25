@@ -13,8 +13,6 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-
-	_ "github.com/go-sql-driver/mysql"
 )
 
 // Lisans verileri için bir yapı (struct)
@@ -36,34 +34,9 @@ type KeyInfo struct {
 	MacAddress sql.NullString `json:"mac_address,omitempty"`
 }
 
-/* type KeyInfo struct {
-	OrgName    sql.NullString `json:"org_name,omitempty"`
-	OrgEmail   sql.NullString `json:"org_email,omitempty"`
-	Expiration sql.NullString `json:"expiration,omitempty"`
-	EncKey     sql.NullString `json:"enc_key,omitempty"`
-	LicenseKey sql.NullString `json:"license_key,omitempty"`
-	IsDemo     sql.NullBool   `json:"is_demo,omitempty"`
-	MacAddress sql.NullString `json:"mac_address,omitempty"`
-} */
-
 var db *gorm.DB // veritabanı bağlantısı
 
 func init() {
-	/* var (
-		username = "root"
-		password = "415263aA"
-		host     = "127.0.0.1"
-		port     = 3306
-		database = "licence_server"
-	)
-
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", username, password, host, port, database)
-	var err error
-	db, err = sql.Open("mysql", dsn)
-	if err != nil {
-		panic(err.Error())
-	}
-	fmt.Println("Success!") */
 	var err error
 	db, err = gorm.Open(sqlite.Open("../db/licence.db"), &gorm.Config{})
 	if err != nil {
@@ -149,7 +122,6 @@ func verifyLicense(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Lisansın son kullanma tarihini kontrol et
-	//expirationTime, err := time.Parse("2006-01-02 15:04:05", keyInfo.Expiration.Time.String())
 	expirationTime := keyInfo.Expiration.Time
 	fmt.Printf("Geçerlilik Tarihi: %s\n", expirationTime.Format("2006-01-02 15:04:05"))
 	if err != nil {

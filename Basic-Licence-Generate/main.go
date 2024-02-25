@@ -117,17 +117,6 @@ func main() {
 
 	fmt.Printf("Şifrelenmiş Anahtar : %+v\n", encryptedLicense)
 
-	/* //Veriyi eklemek için INSERT sorgusu
-	insertQuery := "INSERT INTO key_info (org_name, org_email, expiration, enc_key, license_key, is_demo) VALUES (?, ?, ?, ?, ?, ?)"
-	result, err := db.Exec(insertQuery, org_name, org_email, license.Expiration, encryptionKey, license.LicenseKey, is_demo_db)
-	if err != nil {
-		fmt.Println("Veri eklenemedi:", err)
-		return
-	}
-
-	lastID, _ := result.LastInsertId()
-	fmt.Println("Eklenen verinin ID'si:", lastID) */
-
 	// Veriyi eklemek için INSERT işlemi
 	newKeyInfo := KeyInfo{
 		OrgName:    sql.NullString{String: org_name, Valid: true},
