@@ -15,7 +15,7 @@ import (
 )
 
 type LicenseData struct {
-	LicenseKey string    `json:"license_key"`
+	LicenceKey string    `json:"licence_key"`
 	Expiration time.Time `json:"expiration"`
 	MacAdress  string    `json:"mac_adress"`
 }
@@ -86,12 +86,12 @@ func main() {
 		// Lisans başarıyla alındı
 		var responseData map[string]string
 		json.NewDecoder(resp_auth.Body).Decode(&responseData)
-		licenseKey := responseData["license_key"]
-		fmt.Println("Şifrelenmiş Lisans anahtarı:", licenseKey)
+		licenceKey := responseData["licence_key"]
+		fmt.Println("Şifrelenmiş Lisans anahtarı:", licenceKey)
 
 		// Lisans anahtarını oluşturun ve son kullanma tarihini belirleyin
-		license := LicenseData{
-			LicenseKey: DecryptAES([]byte(encryptionKey), licenseKey), // Geçerli bir lisans anahtarı
+		licence := LicenseData{
+			LicenceKey: DecryptAES([]byte(encryptionKey), licenceKey), // Geçerli bir lisans anahtarı
 			Expiration: time.Now().Add(48 * time.Hour),                // 24 saatlik lisans süresi
 			MacAdress:  findMac(),
 		}
@@ -99,7 +99,7 @@ func main() {
 		serverURL := "http://127.0.0.1:8080/verify" // Sunucu IP ve portunu doğru şekilde belirtin
 
 		// Lisansı sunucuya POST isteği gönderin
-		requestBody, err := json.Marshal(license)
+		requestBody, err := json.Marshal(licence)
 		if err != nil {
 			fmt.Println("İstek gönderme hatası:", err)
 			return
@@ -134,8 +134,8 @@ func main() {
 
 }
 
-func DecryptAES(encryptionKey []byte, encryptedLicense string) string {
-	decodedLicense, _ := hex.DecodeString(encryptedLicense)
+func DecryptAES(encryptionKey []byte, encryptedLicence string) string {
+	decodedLicence, _ := hex.DecodeString(encryptedLicence)
 
 	block, err := aes.NewCipher(encryptionKey)
 	if err != nil {
@@ -143,12 +143,12 @@ func DecryptAES(encryptionKey []byte, encryptedLicense string) string {
 		return ""
 	}
 
-	pt := make([]byte, len(decodedLicense))
-	block.Decrypt(pt, decodedLicense)
+	pt := make([]byte, len(decodedLicence))
+	block.Decrypt(pt, decodedLicence)
 
-	decryptedLicense := string(pt[:])
-	fmt.Printf("DECRYPTED: %+v\n", decryptedLicense)
-	return decryptedLicense
+	decryptedLicence := string(pt[:])
+	fmt.Printf("DECRYPTED: %+v\n", decryptedLicence)
+	return decryptedLicence
 }
 
 func findMac() string {

@@ -19,8 +19,8 @@ import (
 )
 
 // Lisans verileri için bir yapı (struct)
-type LicenseData struct {
-	LicenseKey string    `json:"license_key"`
+type LicenceData struct {
+	LicenceKey string    `json:"licence_key"`
 	Expiration time.Time `json:"expiration"`
 }
 
@@ -31,13 +31,13 @@ type KeyInfo struct {
 	OrgEmail   sql.NullString `json:"org_email,omitempty"`
 	Expiration sql.NullTime   `json:"expiration,omitempty"`
 	EncKey     sql.NullString `json:"enc_key,omitempty"`
-	LicenseKey sql.NullString `json:"license_key,omitempty"`
+	LicenceKey sql.NullString `json:"licence_key,omitempty"`
 	IsDemo     sql.NullBool   `json:"is_demo,omitempty"`
 	MacAddress sql.NullString `json:"mac_address,omitempty"`
 }
 
-var validLicenses = make(map[string]LicenseData)
-var license LicenseData
+var validLicences = make(map[string]LicenceData)
+var licence LicenceData
 
 func main() {
 	var (
@@ -77,11 +77,11 @@ func main() {
 
 	if is_demo == "y" {
 		is_demo_db = true
-		license = LicenseData{
-			LicenseKey: generateLicenseKey(),
+		licence = LicenceData{
+			LicenceKey: generateLicenceKey(),
 			Expiration: time.Now().Add(30 * 24 * time.Hour), // 30 günlük demo lisans
 		}
-		validLicenses[license.LicenseKey] = license
+		validLicences[licence.LicenceKey] = licence
 	} else {
 		is_demo_db = false
 		expirationTime, err := time.Parse("2006-01-02", strings.TrimSpace(org_exp))
@@ -91,14 +91,14 @@ func main() {
 		}
 		// Lisans süresini gün sonuna ayarlanır (23:59:59)
 		expirationTime = expirationTime.Add(24 * time.Hour).Add(-time.Second)
-		license = LicenseData{
-			LicenseKey: generateLicenseKey(),
+		licence = LicenceData{
+			LicenceKey: generateLicenceKey(),
 			Expiration: expirationTime, // Girilen lisan tarihi atanır
 		}
-		validLicenses[license.LicenseKey] = license
+		validLicences[licence.LicenceKey] = licence
 	}
 	fmt.Println("validLicenses Map İçeriği:")
-	for key, value := range validLicenses {
+	for key, value := range validLicences {
 		fmt.Printf("Anahtar: %s, Değer: %+v\n", key, value)
 	}
 
@@ -109,21 +109,21 @@ func main() {
 	}
 	fmt.Println("Rastgele Metin:", encryptionKey)
 
-	encryptedLicense := EncryptAES([]byte(encryptionKey), license.LicenseKey)
+	encryptedLicence := EncryptAES([]byte(encryptionKey), licence.LicenceKey)
 	if err != nil {
 		fmt.Println("Veri Şifrelenemedi:", err)
 		return
 	}
 
-	fmt.Printf("Şifrelenmiş Anahtar : %+v\n", encryptedLicense)
+	fmt.Printf("Şifrelenmiş Anahtar : %+v\n", encryptedLicence)
 
 	// Veriyi eklemek için INSERT işlemi
 	newKeyInfo := KeyInfo{
 		OrgName:    sql.NullString{String: org_name, Valid: true},
 		OrgEmail:   sql.NullString{String: org_email, Valid: true},
-		Expiration: sql.NullTime{Time: license.Expiration, Valid: true},
+		Expiration: sql.NullTime{Time: licence.Expiration, Valid: true},
 		EncKey:     sql.NullString{String: encryptionKey, Valid: true},
-		LicenseKey: sql.NullString{String: license.LicenseKey, Valid: true},
+		LicenceKey: sql.NullString{String: licence.LicenceKey, Valid: true},
 		IsDemo:     sql.NullBool{Bool: is_demo_db, Valid: true},
 	}
 
@@ -162,7 +162,7 @@ func main() {
 	fmt.Println("Şifreleme anahtarı başarıyla kaydedildi:", jsonFilePath)
 }
 
-func generateLicenseKey() string {
+func generateLicenceKey() string {
 	keyLength := 16 // Anahtarın uzunluğu (4 grup, her grupta 4 karakter)
 
 	characters := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" // Geçerli karakterler
@@ -196,17 +196,17 @@ func generateEncryptionKey(length int) (string, error) {
 	return randomText[:length], nil
 }
 
-func EncryptAES(encryptionKey []byte, licenseKey string) string {
+func EncryptAES(encryptionKey []byte, licenceKey string) string {
 	// create cipher
 	block, err := aes.NewCipher(encryptionKey)
 	if err != nil {
 		return "AES Hata Verdi"
 	}
 
-	encodedLicense := make([]byte, len(licenseKey))
+	encodedLicence := make([]byte, len(licenceKey))
 
 	// Veri Şifrelenir
-	block.Encrypt(encodedLicense, []byte(licenseKey))
+	block.Encrypt(encodedLicence, []byte(licenceKey))
 	// Hex olarak return edilir
-	return hex.EncodeToString(encodedLicense)
+	return hex.EncodeToString(encodedLicence)
 }

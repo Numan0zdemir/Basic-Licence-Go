@@ -16,8 +16,8 @@ import (
 )
 
 // Lisans verileri için bir yapı (struct)
-type LicenseData struct {
-	LicenseKey string    `json:"license_key"`
+type LicenceData struct {
+	LicenceKey string    `json:"licence_key"`
 	Expiration time.Time `json:"expiration"`
 	MacAdress  string    `json:"mac_adress"`
 }
@@ -29,7 +29,7 @@ type KeyInfo struct {
 	OrgEmail   sql.NullString `json:"org_email,omitempty"`
 	Expiration sql.NullTime   `json:"expiration,omitempty"`
 	EncKey     sql.NullString `json:"enc_key,omitempty"`
-	LicenseKey sql.NullString `json:"license_key,omitempty"`
+	LicenceKey sql.NullString `json:"licence_key,omitempty"`
 	IsDemo     sql.NullBool   `json:"is_demo,omitempty"`
 	MacAddress sql.NullString `json:"mac_address,omitempty"`
 }
@@ -49,14 +49,14 @@ func init() {
 
 func main() {
 
-	http.HandleFunc("/auth", authLicense)
-	http.HandleFunc("/verify", verifyLicense)
-	http.HandleFunc("/get_license", GetKeyInfo)
+	http.HandleFunc("/auth", authLicence)
+	http.HandleFunc("/verify", verifyLicence)
+	http.HandleFunc("/get_licence", GetKeyInfo)
 	http.ListenAndServe(":8080", nil)
 
 }
 
-func authLicense(w http.ResponseWriter, r *http.Request) {
+func authLicence(w http.ResponseWriter, r *http.Request) {
 	// Client tarafından gönderilen JSON verileri işlenir
 	var requestData map[string]string
 	err := json.NewDecoder(r.Body).Decode(&requestData)
@@ -88,9 +88,9 @@ func authLicense(w http.ResponseWriter, r *http.Request) {
 
 	// keyInfo.ID, keyInfo.EncKey, keyInfo.LicenseKey değişkenlerini kullanabilirsiniz
 
-	encryptedLicense := EncryptAES([]byte(keyInfo.EncKey.String), keyInfo.LicenseKey.String)
-	licenseData := map[string]string{"license_key": encryptedLicense}
-	responseData, err := json.Marshal(licenseData)
+	encryptedLicence := EncryptAES([]byte(keyInfo.EncKey.String), keyInfo.LicenceKey.String)
+	licenceData := map[string]string{"licence_key": encryptedLicence}
+	responseData, err := json.Marshal(licenceData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -99,20 +99,20 @@ func authLicense(w http.ResponseWriter, r *http.Request) {
 	w.Write(responseData)
 }
 
-func verifyLicense(w http.ResponseWriter, r *http.Request) {
+func verifyLicence(w http.ResponseWriter, r *http.Request) {
 	// POST isteğinden Gelen lisans verilerini kontrolü
-	var requestLicense LicenseData
-	err := json.NewDecoder(r.Body).Decode(&requestLicense)
+	var requestLicence LicenceData
+	err := json.NewDecoder(r.Body).Decode(&requestLicence)
 	if err != nil {
 		http.Error(w, "Lisans verileri okuma hatası", http.StatusBadRequest)
 		return
 	}
 
-	fmt.Printf("Gelen Lisans Verileri: %+v\n", requestLicense)
+	fmt.Printf("Gelen Lisans Verileri: %+v\n", requestLicence)
 
 	// Veritabanında lisansı kontrol et
 	var keyInfo KeyInfo
-	result := db.Where("license_key = ?", requestLicense.LicenseKey).First(&keyInfo)
+	result := db.Where("licence_key = ?", requestLicence.LicenceKey).First(&keyInfo)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		http.Error(w, "Lisans geçersiz", http.StatusUnauthorized)
 		return
@@ -139,14 +139,14 @@ func verifyLicense(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Lisans geçerli")
 
 	// MAC adresini güncelle
-	result = db.Model(&keyInfo).Update("MacAddress", requestLicense.MacAdress)
+	result = db.Model(&keyInfo).Update("MacAddress", requestLicence.MacAdress)
 	if result.Error != nil {
 		http.Error(w, "MAC adresi güncelleme hatası", http.StatusInternalServerError)
 		return
 	}
 }
 
-func EncryptAES(encryptionKey []byte, licenseKey string) string {
+func EncryptAES(encryptionKey []byte, licenceKey string) string {
 	// Cipher oluşturulur
 	block, err := aes.NewCipher(encryptionKey)
 	if err != nil {
@@ -154,12 +154,12 @@ func EncryptAES(encryptionKey []byte, licenseKey string) string {
 		return "AES Hata Verdi"
 	}
 
-	encodedLicense := make([]byte, len(licenseKey))
+	encodedLicence := make([]byte, len(licenceKey))
 
 	// Şifreleme yapılır
-	block.Encrypt(encodedLicense, []byte(licenseKey))
+	block.Encrypt(encodedLicence, []byte(licenceKey))
 	// Hex olarak return edilir
-	return hex.EncodeToString(encodedLicense)
+	return hex.EncodeToString(encodedLicence)
 }
 
 func GetKeyInfo(w http.ResponseWriter, r *http.Request) {
