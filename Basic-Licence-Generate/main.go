@@ -62,16 +62,8 @@ func main() {
 	fmt.Print("Lütfen kurum email giriniz: ")
 	org_email, _ = reader.ReadString('\n')
 
-	fmt.Print("Lisans Geçerlilik Tarihi Giriniz (YY-AA-GG): ")
-	org_exp, _ = reader.ReadString('\n')
-
 	fmt.Print("Lisans Demo Mu ? (Y/N): ")
 	is_demo, _ = reader.ReadString('\n')
-
-	fmt.Printf("Kurum Adı: %s", org_name)
-	fmt.Printf("Kurum Email: %s", org_email)
-	fmt.Printf("Lisans Geçerlilik Tarihi: %s", org_exp)
-	fmt.Printf("Demo Lisans: %s", is_demo)
 
 	is_demo = strings.TrimSpace(strings.ToLower(is_demo))
 
@@ -84,6 +76,8 @@ func main() {
 		validLicences[licence.LicenceKey] = licence
 	} else {
 		is_demo_db = false
+		fmt.Print("Lisans Geçerlilik Tarihi Giriniz (YYYY-AA-GG): ")
+		org_exp, _ = reader.ReadString('\n')
 		expirationTime, err := time.Parse("2006-01-02", strings.TrimSpace(org_exp))
 		if err != nil {
 			fmt.Println("Geçersiz tarih formatı. Doğru format: YYYY-MM-DD")
@@ -97,6 +91,12 @@ func main() {
 		}
 		validLicences[licence.LicenceKey] = licence
 	}
+
+	fmt.Printf("Kurum Adı: %s", org_name)
+	fmt.Printf("Kurum Email: %s", org_email)
+	fmt.Printf("Lisans Geçerlilik Tarihi: %s", licence.Expiration)
+	fmt.Printf("Demo Lisans: %s", is_demo)
+
 	fmt.Println("validLicenses Map İçeriği:")
 	for key, value := range validLicences {
 		fmt.Printf("Anahtar: %s, Değer: %+v\n", key, value)
