@@ -62,16 +62,16 @@ func main() {
 	fmt.Print("Lütfen kurum email giriniz: ")
 	org_email, _ = reader.ReadString('\n')
 
+	var existUser KeyInfo
+	exist := db.Where("org_email = ? OR org_name = ?", org_email, org_name).First(&existUser)
+	if exist.Error == nil {
+		fmt.Printf("Kullanıcı bulunuyor.")
+		return
+	}
+
 	fmt.Print("Lisans Demo Mu ? (Y/N): ")
 	is_demo, _ = reader.ReadString('\n')
 
-	// Veritabanında aynı kurum adı veya e-posta adresiyle daha önce kayıt yapılmış mı kontrol edilir
-	/* var existingKeyInfo KeyInfo
-	db.Where("org_name = ? OR org_email = ?", strings.TrimSpace(org_name), strings.TrimSpace(org_email)).First(&existingKeyInfo)
-	if existingKeyInfo.ID != 0 {
-		fmt.Println("HATA: Bu kurum adı veya e-posta adresi zaten kullanılıyor!")
-		return
-	} */
 	is_demo = strings.TrimSpace(strings.ToLower(is_demo))
 
 	if is_demo == "y" {
@@ -82,7 +82,6 @@ func main() {
 		}
 		validLicences[licence.LicenceKey] = licence
 	} else {
-		// Lisans demo değilse, geçerlilik tarihi iste.
 		is_demo_db = false
 		fmt.Print("Lisans Geçerlilik Tarihi Giriniz (YYYY-AA-GG): ")
 		org_exp, _ = reader.ReadString('\n')
@@ -99,53 +98,16 @@ func main() {
 		}
 		validLicences[licence.LicenceKey] = licence
 	}
+
+	fmt.Printf("Kurum Adı: %s", org_name)
+	fmt.Printf("Kurum Email: %s", org_email)
+	fmt.Printf("Lisans Geçerlilik Tarihi: %s", licence.Expiration)
+	fmt.Printf("Demo Lisans: %s", is_demo)
+
 	fmt.Println("validLicenses Map İçeriği:")
 	for key, value := range validLicences {
 		fmt.Printf("Anahtar: %s, Değer: %+v\n", key, value)
 	}
-
-	/* 	if strings.ToLower(strings.TrimSpace(is_demo)) == "y" {
-	   		is_demo_db = true
-	   		licence = LicenceData{
-	   			LicenceKey: generateLicenceKey(),
-	   			Expiration: time.Now().Add(30 * 24 * time.Hour), // 30 günlük demo lisans
-	   		}
-	   		validLicences[licence.LicenceKey] = licence
-
-	   		// Tarih sormadan devam etmek için burada çıkabiliriz
-	   		fmt.Println("Demo lisans oluşturuldu.")
-	   		fmt.Println("Geçerlilik Tarihi: 30 gün")
-	   		fmt.Println("validLicenses Map İçeriği:")
-	   		for key, value := range validLicences {
-	   			fmt.Printf("Anahtar: %s, Değer: %+v\n", key, value)
-	   		}
-	   		return
-	   	}
-
-	   	// Lisans demo değilse, geçerlilik tarihi iste.
-	   	fmt.Print("Lisans Geçerlilik Tarihi Giriniz (YYYY-AA-GG): ")
-	   	org_exp, _ = reader.ReadString('\n')
-	   	is_demo_db = false
-	   	expirationTime, err := time.Parse("2006-01-02", strings.TrimSpace(org_exp))
-	   	if err != nil {
-	   		fmt.Println("Geçersiz tarih formatı. Doğru format: YYYY-MM-DD")
-	   		return
-	   	}
-	   	// Lisans süresi gün sonuna ayarlanır (23:59:59)
-	   	expirationTime = expirationTime.Add(24 * time.Hour).Add(-time.Second)
-	   	licence = LicenceData{
-	   		LicenceKey: generateLicenceKey(),
-	   		Expiration: expirationTime, // Girilen lisans tarihi atanır
-	   	} */
-	validLicences[licence.LicenceKey] = licence
-	for key, value := range validLicences {
-		fmt.Printf("Anahtar: %s, Değer: %+v\n", key, value)
-	}
-
-	fmt.Printf("Kurum Adı: %s", org_name)
-	fmt.Printf("Kurum Email: %s", org_email)
-	fmt.Printf("Lisans Geçerlilik Tarihi: %s", org_exp)
-	fmt.Printf("Demo Lisans: %s", is_demo)
 
 	encryptionKey, err := generateEncryptionKey(32) // Örnek olarak 32 byte (256 bit) uzunluğunda bir anahtar oluşturur
 	if err != nil {
