@@ -136,8 +136,6 @@ func verifyLicence(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintln(w, "Lisans geçerli")
-
 	// MAC adresi zaten bir kullanıcıyla bağdaşıyor mu?
 	var existingUser KeyInfo
 	db.Where("licence_key = ?", requestLicence.LicenceKey).First(&existingUser)
@@ -155,6 +153,7 @@ func verifyLicence(w http.ResponseWriter, r *http.Request) {
 		// MAC adresi alanı doluysa, başka bir cihazla eşleştirilmiş
 		fmt.Printf("MAC adresi başka bir cihazla eşleştirilmiş.")
 	}
+	fmt.Fprintln(w, "Lisans geçerli")
 
 }
 
