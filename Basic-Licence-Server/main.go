@@ -141,19 +141,23 @@ func verifyLicence(w http.ResponseWriter, r *http.Request) {
 	db.Where("licence_key = ?", requestLicence.LicenceKey).First(&existingUser)
 	if existingUser.MacAddress.Valid {
 		fmt.Printf("Mac Adresi: %s\n", existingUser.MacAddress.String)
+		if requestLicence.MacAdress == existingUser.MacAddress.String {
+			fmt.Fprintln(w, "Lisans geçerli")
+			return
+		} else {
+			http.Error(w, "Mac Adres eşleşmedi.", http.StatusUnauthorized)
+			return
+		}
+	} else { // İlk Kayıt Bloğu
 
-	} else if existingUser.MacAddress.String == "" {
-		// MAC adresi alanı boşsa, güncelleme yapılabilir
 		result = db.Model(&keyInfo).Update("MacAddress", requestLicence.MacAdress)
 		if result.Error != nil {
 			http.Error(w, "MAC adresi güncelleme hatası", http.StatusInternalServerError)
 			return
 		}
-	} else {
-		// MAC adresi alanı doluysa, başka bir cihazla eşleştirilmiş
-		fmt.Printf("MAC adresi başka bir cihazla eşleştirilmiş.")
+		fmt.Fprintln(w, "Lisans geçerli")
+		return
 	}
-	fmt.Fprintln(w, "Lisans geçerli")
 
 }
 
