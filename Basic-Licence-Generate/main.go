@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -62,10 +63,13 @@ func main() {
 	fmt.Print("Lütfen kurum email giriniz: ")
 	org_email, _ = reader.ReadString('\n')
 
-	var existUser KeyInfo
-	exist := db.Where("org_email = ? OR org_name = ?", org_email, org_name).First(&existUser)
+	var existingUser KeyInfo
+	exist := db.Where("org_name = ? OR org_email = ?", org_name, org_email).First(&existingUser)
 	if exist.Error == nil {
-		fmt.Printf("Kullanıcı bulunuyor.")
+		fmt.Println("Kullanıcı zaten mevcut")
+		return
+	} else if !errors.Is(exist.Error, gorm.ErrRecordNotFound) {
+		fmt.Println("Veritabanı hatası:", exist.Error)
 		return
 	}
 
