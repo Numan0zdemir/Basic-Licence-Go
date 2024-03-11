@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -112,7 +111,7 @@ func main() {
 		}
 		defer resp_verify.Body.Close()
 
-		// Sunucudan gelen yanıtı okuyun
+		// Sunucudan gelen yanıtı oku
 		var responseBody bytes.Buffer
 		_, err = responseBody.ReadFrom(resp_verify.Body)
 		if err != nil {
@@ -120,13 +119,13 @@ func main() {
 			return
 		}
 
-		// Sunucu yanıtını ekrana yazdırın
-		if strings.TrimSpace(responseBody.String()) == "Lisans geçerli" {
+		// License-Status başlığını kontrol et
+		licenceStatus := resp_verify.Header.Get("Licence-Status")
+		if licenceStatus == "Valid" {
 			fmt.Println("Lisans geçerli")
 		} else {
 			fmt.Println("Lisans geçerli değil.")
 		}
-
 	} else {
 		// Lisans alınamadı
 		fmt.Println("Lisans alınamadı. Sunucu yanıtı:", resp_auth.Status)
