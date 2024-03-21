@@ -1,0 +1,1 @@
+licence.db file automatically creates in this directory.
