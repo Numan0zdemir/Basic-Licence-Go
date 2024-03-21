@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -101,18 +102,38 @@ func authLicence(w http.ResponseWriter, r *http.Request) {
 
 func verifyLicence(w http.ResponseWriter, r *http.Request) {
 	// POST isteğinden Gelen lisans verilerini kontrolü
-	var requestLicence LicenceData
+	var requestLicence map[string]string
 	err := json.NewDecoder(r.Body).Decode(&requestLicence)
 	if err != nil {
 		http.Error(w, "Lisans verileri okuma hatası", http.StatusBadRequest)
 		return
 	}
+	jwtToken := requestLicence["jwtToken"]
+	fmt.Printf("Gelen Lisans Verileri: %s\n", jwtToken)
 
-	fmt.Printf("Gelen Lisans Verileri: %+v\n", requestLicence)
+	// Token'ı parse et (doğrulamadan)
+	token, _, err := new(jwt.Parser).ParseUnverified(jwtToken, jwt.MapClaims{})
+	if err != nil {
+		fmt.Println("JWT parse hatası:", err)
+		return
+	}
+
+	// Token'dan LicenceData'yı çıkar
+	var licence LicenceData
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		licence.LicenceKey = claims["licence_key"].(string)
+		licence.Expiration, _ = time.Parse(time.RFC3339, claims["expiration"].(string))
+		licence.MacAdress = claims["mac_adress"].(string)
+	}
+
+	// LicenceData'ya eriş
+	fmt.Println("Lisans Anahtarı:", licence.LicenceKey)
+	fmt.Println("Son Kullanma Tarihi:", licence.Expiration)
+	fmt.Println("MAC Adresi:", licence.MacAdress)
 
 	// Veritabanında lisansı kontrol et
 	var keyInfo KeyInfo
-	result := db.Where("licence_key = ?", requestLicence.LicenceKey).First(&keyInfo)
+	result := db.Where("licence_key = ?", licence.LicenceKey).First(&keyInfo)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		http.Error(w, "Lisans geçersiz", http.StatusUnauthorized)
 		return
@@ -121,27 +142,45 @@ func verifyLicence(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Token'ın doğruluğunu test et
+	token, err = jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
+		return []byte(keyInfo.EncKey.String), nil
+		//return []byte("gizli*anahtar"), nil
+	})
+	if err != nil {
+		fmt.Println("JWT parse hatası:", err)
+		http.Error(w, "JWT parse hatası", http.StatusInternalServerError)
+		return
+	}
+
+	if !token.Valid {
+		http.Error(w, "Geçersiz Token", http.StatusUnauthorized)
+		return
+	}
+
+	fmt.Println("Token doğrulandı")
+
 	// Lisansın son kullanma tarihini kontrol et
 	expirationTime := keyInfo.Expiration.Time
 	fmt.Printf("Geçerlilik Tarihi: %s\n", expirationTime.Format("2006-01-02 15:04:05"))
 	if err != nil {
-		fmt.Printf("Test2\n")
 		http.Error(w, "Geçersiz son kullanma tarihi formatı", http.StatusInternalServerError)
 		return
 	}
 
 	currentTime := time.Now()
 	if currentTime.After(expirationTime) {
+		fmt.Println("Lisans Süresi Dolmuş")
 		http.Error(w, "Lisans Süresi Dolmuş", http.StatusUnauthorized)
 		return
 	}
 
 	// MAC adresi zaten bir kullanıcıyla bağdaşıyor mu?
 	var existingUser KeyInfo
-	db.Where("licence_key = ?", requestLicence.LicenceKey).First(&existingUser)
+	db.Where("licence_key = ?", licence.LicenceKey).First(&existingUser)
 	if existingUser.MacAddress.Valid {
 		fmt.Printf("Mac Adresi: %s\n", existingUser.MacAddress.String)
-		if requestLicence.MacAdress == existingUser.MacAddress.String {
+		if licence.MacAdress == existingUser.MacAddress.String {
 			w.Header().Set("Licence-Status", "Valid")
 			return
 		} else {
@@ -149,8 +188,7 @@ func verifyLicence(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else { // İlk Kayıt Bloğu
-
-		result = db.Model(&keyInfo).Update("MacAddress", requestLicence.MacAdress)
+		result = db.Model(&keyInfo).Update("MacAddress", licence.MacAdress)
 		if result.Error != nil {
 			http.Error(w, "MAC adresi güncelleme hatası", http.StatusInternalServerError)
 			return
@@ -158,7 +196,6 @@ func verifyLicence(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Licence-Status", "Valid")
 		return
 	}
-
 }
 
 func EncryptAES(encryptionKey []byte, licenceKey string) string {

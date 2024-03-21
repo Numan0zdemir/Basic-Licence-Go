@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type LicenseData struct {
@@ -23,6 +25,9 @@ type LicenseData struct {
 type Config struct {
 	EncryptionKey string `json:"encryption_key"`
 }
+
+// JWT Key Tanımlama
+var jwtKey []byte
 
 func main() {
 
@@ -64,6 +69,9 @@ func main() {
 	// encryptionKey değişkenine JSON'dan gelen değeri ata
 	encryptionKey := config.EncryptionKey
 
+	//ENC Key JWT Key olarak Tanımlanır
+	jwtKey := []byte(encryptionKey)
+
 	// Değerin doğru bir şekilde alınıp alınmadığını kontrol etmek için yazdır
 	fmt.Println("encryptionKey:", encryptionKey)
 
@@ -97,14 +105,39 @@ func main() {
 		// Sunucu adresini belirleyin
 		serverURL := "http://127.0.0.1:8080/verify" // Sunucu IP ve portunu doğru şekilde belirtin
 
-		// Lisansı sunucuya POST isteği gönderin
+		/* // Lisansı sunucuya POST isteği gönderin
 		requestBody, err := json.Marshal(licence)
 		if err != nil {
 			fmt.Println("İstek gönderme hatası:", err)
 			return
+		} */
+
+		// JWT oluştur
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"licence_key": licence.LicenceKey,
+			"expiration":  licence.Expiration,
+			"mac_adress":  licence.MacAdress,
+		})
+
+		// JWT'yi imzala
+		tokenString, err := token.SignedString(jwtKey)
+		if err != nil {
+			fmt.Println("JWT imzalama hatası:", err)
+			return
 		}
 
-		resp_verify, err := http.Post(serverURL, "application/json", bytes.NewBuffer(requestBody))
+		fmt.Println("Oluşturulan JWT:", tokenString)
+
+		// JWT'yi JSON verisine dönüştür
+		jsonData := map[string]string{"jwtToken": tokenString}
+		payload, err := json.Marshal(jsonData)
+		if err != nil {
+			fmt.Println("JSON dönüştürme hatası:", err)
+			return
+		}
+
+		//Veriler Sunucuya Gönderilir
+		resp_verify, err := http.Post(serverURL, "application/json", bytes.NewBuffer(payload))
 		if err != nil {
 			fmt.Println("İstek gönderme hatası:", err)
 			return
