@@ -176,11 +176,9 @@ func verifyLicence(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// MAC adresi zaten bir kullanıcıyla bağdaşıyor mu?
-	var existingUser KeyInfo
-	db.Where("licence_key = ?", licence.LicenceKey).First(&existingUser)
-	if existingUser.MacAddress.Valid {
-		fmt.Printf("Mac Adresi: %s\n", existingUser.MacAddress.String)
-		if licence.MacAdress == existingUser.MacAddress.String {
+	if keyInfo.MacAddress.Valid {
+		fmt.Printf("Mac Adresi: %s\n", keyInfo.MacAddress.String)
+		if licence.MacAdress == keyInfo.MacAddress.String {
 			w.Header().Set("Licence-Status", "Valid")
 			return
 		} else {

@@ -1,4 +1,4 @@
-module github.com/Numan0zdemir/DijiRack-Lisans-Generate
+module github.com/Numan0zdemir/Basic-Licence-Go/Basic-Licence-Generate
 
 go 1.21.1
 

@@ -1,4 +1,4 @@
-module github.com/Numan0zdemir/DijiRack-Lisans-Server
+module github.com/Numan0zdemir/Basic-Licence-Go/Basic-Licence-Client
 
 go 1.21.1
 

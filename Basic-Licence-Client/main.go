@@ -71,6 +71,7 @@ func main() {
 
 	//ENC Key JWT Key olarak Tanımlanır
 	jwtKey := []byte(encryptionKey)
+	//jwtKey := []byte("testjwtkey")
 
 	// Değerin doğru bir şekilde alınıp alınmadığını kontrol etmek için yazdır
 	fmt.Println("encryptionKey:", encryptionKey)
